@@ -1,0 +1,118 @@
+-- Variáveis iniciais
+local lineEnabled = false
+local points = {}  -- Armazena os pontos da linha
+local lineParts = {}  -- Armazena as partes da linha visível
+local player = game.Players.LocalPlayer
+local car = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+local carSpeed = 0  -- A velocidade do carro
+
+-- Função para criar um ponto na linha
+local function createPoint(position, color)
+    local point = Instance.new("Part")
+    point.Size = Vector3.new(1, 1, 1)
+    point.Shape = Enum.PartType.Ball
+    point.Position = position
+    point.Anchored = true
+    point.CanCollide = false
+    point.Color = color
+    point.Parent = workspace
+    return point
+end
+
+-- Função para desenhar a linha de corrida
+local function drawRaceLine()
+    -- Limpa a linha anterior
+    for _, part in pairs(lineParts) do
+        part:Destroy()
+    end
+    lineParts = {}  -- Limpa o array de partes da linha
+
+    -- Desenha a linha
+    for i, point in ipairs(points) do
+        local color = Color3.fromRGB(255, 255, 255)  -- Cor padrão para a linha
+        if i > 1 then
+            -- Detecta a velocidade do carro
+            local distance = (car.Position - points[i - 1]).Magnitude
+            if carSpeed > 60 then  -- Se a velocidade for maior que 60
+                color = Color3.fromRGB(0, 255, 0)  -- Verde para acelerar
+            elseif carSpeed < 30 then  -- Se a velocidade for baixa
+                color = Color3.fromRGB(255, 0, 0)  -- Vermelho para freiar
+            else
+                color = Color3.fromRGB(0, 0, 255)  -- Azul como referência para o ponto
+            end
+        end
+        
+        -- Cria um ponto de linha com a cor apropriada
+        local part = createPoint(point, color)
+        table.insert(lineParts, part)
+    end
+end
+
+-- Função para adicionar pontos à linha
+local function addPointToLine(position)
+    table.insert(points, position)
+    if lineEnabled then
+        drawRaceLine()  -- Atualiza a linha quando um novo ponto é adicionado
+    end
+end
+
+-- Função para alternar a linha de corrida
+local function toggleRaceLine()
+    lineEnabled = not lineEnabled
+    if lineEnabled then
+        drawRaceLine()
+    else
+        -- Remove os pontos da linha quando desativada
+        for _, part in pairs(lineParts) do
+            part:Destroy()
+        end
+        lineParts = {}
+    end
+end
+
+-- Função para atualizar a velocidade do carro
+local function updateCarSpeed()
+    if car then
+        -- Calcula a velocidade do carro com base na posição
+        local velocity = car.Velocity
+        carSpeed = velocity.Magnitude
+    end
+end
+
+-- Interface gráfica (GUI)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 100, 0, 50)
+toggleButton.Position = UDim2.new(0.5, -50, 0, 10)
+toggleButton.Text = "Ativar Linha"
+toggleButton.BackgroundColor3 = Color3.fromRGB(85, 170, 255)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextSize = 18
+toggleButton.Parent = screenGui
+
+-- Função de clique do botão para ativar/desativar a linha
+toggleButton.MouseButton1Click:Connect(function()
+    toggleRaceLine()
+    if lineEnabled then
+        toggleButton.Text = "Desativar Linha"
+    else
+        toggleButton.Text = "Ativar Linha"
+    end
+end)
+
+-- Adicionar pontos manualmente (exemplo)
+addPointToLine(Vector3.new(0, 0, 0))  -- Ponto inicial
+addPointToLine(Vector3.new(50, 0, 50))  -- Ponto de curva
+addPointToLine(Vector3.new(100, 0, 0))  -- Outro ponto
+
+-- Atualiza a velocidade do carro e a linha a cada segundo
+while true do
+    updateCarSpeed()
+    if lineEnabled then
+        drawRaceLine()
+    end
+    wait(1)  -- Espera 1 segundo antes de atualizar novamente
+end
