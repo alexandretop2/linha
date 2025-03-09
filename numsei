@@ -1,52 +1,42 @@
 -- Variáveis iniciais
 local lineEnabled = false
 local points = {}  -- Armazena os pontos da linha
-local lineParts = {}  -- Armazena as partes da linha visível
 local player = game.Players.LocalPlayer
 local car = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 local carSpeed = 0  -- A velocidade do carro
-local UserInputService = game:GetService("UserInputService")
 
--- Função para criar um ponto na linha
-local function createPoint(position, color)
-    local point = Instance.new("Part")
-    point.Size = Vector3.new(1, 1, 1)
-    point.Shape = Enum.PartType.Ball
-    point.Position = position
-    point.Anchored = true
-    point.CanCollide = false
-    point.Color = color
-    point.Parent = workspace
-    return point
-end
+-- Função para criar a linha de traçado
+local function createRaceLine()
+    local lineParts = {}
 
--- Função para desenhar a linha de corrida
-local function drawRaceLine()
-    -- Limpa a linha anterior
-    for _, part in pairs(lineParts) do
-        part:Destroy()
-    end
-    lineParts = {}  -- Limpa o array de partes da linha
+    -- Desenha a linha conectando os pontos
+    for i = 2, #points do
+        local startPoint = points[i - 1]
+        local endPoint = points[i]
 
-    -- Desenha a linha
-    for i, point in ipairs(points) do
-        local color = Color3.fromRGB(255, 255, 255)  -- Cor padrão para a linha
-        
-        if i > 1 then
-            -- Detecta a velocidade do carro
-            local distance = (car.Position - points[i - 1]).Magnitude
-            if carSpeed > 60 then  -- Se a velocidade for maior que 60
-                color = Color3.fromRGB(0, 255, 0)  -- Verde para acelerar
-            elseif carSpeed < 30 then  -- Se a velocidade for baixa
-                color = Color3.fromRGB(255, 0, 0)  -- Vermelho para freiar
-            else
-                color = Color3.fromRGB(0, 0, 255)  -- Azul como referência para o ponto
-            end
+        -- Cria um Trail entre os pontos
+        local trail = Instance.new("Trail")
+        trail.Parent = workspace
+        trail.Attachment0 = Instance.new("Attachment")
+        trail.Attachment0.Position = startPoint
+        trail.Attachment0.Parent = workspace
+
+        trail.Attachment1 = Instance.new("Attachment")
+        trail.Attachment1.Position = endPoint
+        trail.Attachment1.Parent = workspace
+
+        -- Define a cor do Trail dependendo da velocidade
+        local color = Color3.fromRGB(255, 255, 255)  -- Cor padrão (branca)
+        if carSpeed > 60 then
+            color = Color3.fromRGB(0, 255, 0)  -- Verde para acelerar
+        elseif carSpeed < 30 then
+            color = Color3.fromRGB(255, 0, 0)  -- Vermelho para freiar
         end
-        
-        -- Cria um ponto de linha com a cor apropriada
-        local part = createPoint(point, color)
-        table.insert(lineParts, part)
+        trail.Color = ColorSequence.new(color)
+
+        -- Ajusta a espessura da linha
+        trail.WidthScale = 0.5
+        table.insert(lineParts, trail)
     end
 end
 
@@ -54,7 +44,7 @@ end
 local function addPointToLine(position)
     table.insert(points, position)
     if lineEnabled then
-        drawRaceLine()  -- Atualiza a linha quando um novo ponto é adicionado
+        createRaceLine()  -- Atualiza a linha quando um novo ponto é adicionado
     end
 end
 
@@ -62,13 +52,14 @@ end
 local function toggleRaceLine()
     lineEnabled = not lineEnabled
     if lineEnabled then
-        drawRaceLine()
+        createRaceLine()
     else
-        -- Remove os pontos da linha quando desativada
-        for _, part in pairs(lineParts) do
-            part:Destroy()
+        -- Remove a linha quando desativada
+        for _, trail in pairs(workspace:GetChildren()) do
+            if trail:IsA("Trail") then
+                trail:Destroy()
+            end
         end
-        lineParts = {}
     end
 end
 
@@ -95,68 +86,6 @@ toggleButton.Font = Enum.Font.GothamBold
 toggleButton.TextSize = 18
 toggleButton.Parent = screenGui
 
-local addPointButton = Instance.new("TextButton")
-addPointButton.Size = UDim2.new(0, 100, 0, 50)
-addPointButton.Position = UDim2.new(0.5, -50, 0, 70)
-addPointButton.Text = "Adicionar Ponto"
-addPointButton.BackgroundColor3 = Color3.fromRGB(85, 255, 85)
-addPointButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-addPointButton.Font = Enum.Font.GothamBold
-addPointButton.TextSize = 18
-addPointButton.Parent = screenGui
-
--- Variáveis para o movimento dos botões
-local draggingButton = nil
-local dragInput = nil
-local startPos = nil
-
--- Função para ativar o movimento dos botões
-local function startDrag(button, input)
-    draggingButton = button
-    startPos = button.Position
-    dragInput = input
-end
-
-local function dragButton(input)
-    if draggingButton then
-        local delta = input.Position - dragInput.Position
-        draggingButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end
-
-local function stopDrag()
-    draggingButton = nil
-    dragInput = nil
-end
-
--- Inicia o movimento do botão de ativação
-toggleButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        startDrag(toggleButton, input)
-    end
-end)
-
--- Inicia o movimento do botão de adicionar ponto
-addPointButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        startDrag(addPointButton, input)
-    end
-end)
-
--- Movimenta o botão enquanto o dedo/mouse se move
-UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragButton(input)
-    end
-end)
-
--- Finaliza o movimento dos botões
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        stopDrag()
-    end
-end)
-
 -- Função de clique do botão para ativar/desativar a linha
 toggleButton.MouseButton1Click:Connect(function()
     toggleRaceLine()
@@ -164,22 +93,6 @@ toggleButton.MouseButton1Click:Connect(function()
         toggleButton.Text = "Desativar Linha"
     else
         toggleButton.Text = "Ativar Linha"
-    end
-end)
-
--- Função de clique do botão para adicionar ponto
-addPointButton.MouseButton1Click:Connect(function()
-    -- Pega a posição do toque e adiciona um ponto
-    local touchPosition = player.Character.HumanoidRootPart.Position
-    addPointToLine(touchPosition)
-end)
-
--- Função para mover os pontos da linha com o dedo
-UserInputService.TouchStarted:Connect(function(input)
-    if lineEnabled then
-        -- Adiciona um ponto na posição onde o jogador tocou
-        local touchPosition = input.Position
-        addPointToLine(Vector3.new(touchPosition.X, 0, touchPosition.Y))  -- Ajuste a posição conforme necessário
     end
 end)
 
@@ -192,7 +105,7 @@ addPointToLine(Vector3.new(100, 0, 0))  -- Outro ponto
 while true do
     updateCarSpeed()
     if lineEnabled then
-        drawRaceLine()
+        createRaceLine()
     end
     wait(1)  -- Espera 1 segundo antes de atualizar novamente
 end
