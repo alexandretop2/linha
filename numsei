@@ -5,6 +5,7 @@ local lineParts = {}  -- Armazena as partes da linha visível
 local player = game.Players.LocalPlayer
 local car = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 local carSpeed = 0  -- A velocidade do carro
+local UserInputService = game:GetService("UserInputService")
 
 -- Função para criar um ponto na linha
 local function createPoint(position, color)
@@ -93,6 +94,16 @@ toggleButton.Font = Enum.Font.GothamBold
 toggleButton.TextSize = 18
 toggleButton.Parent = screenGui
 
+local addPointButton = Instance.new("TextButton")
+addPointButton.Size = UDim2.new(0, 100, 0, 50)
+addPointButton.Position = UDim2.new(0.5, -50, 0, 70)
+addPointButton.Text = "Adicionar Ponto"
+addPointButton.BackgroundColor3 = Color3.fromRGB(85, 255, 85)
+addPointButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+addPointButton.Font = Enum.Font.GothamBold
+addPointButton.TextSize = 18
+addPointButton.Parent = screenGui
+
 -- Função de clique do botão para ativar/desativar a linha
 toggleButton.MouseButton1Click:Connect(function()
     toggleRaceLine()
@@ -100,6 +111,22 @@ toggleButton.MouseButton1Click:Connect(function()
         toggleButton.Text = "Desativar Linha"
     else
         toggleButton.Text = "Ativar Linha"
+    end
+end)
+
+-- Função de clique do botão para adicionar ponto
+addPointButton.MouseButton1Click:Connect(function()
+    -- Pega a posição do toque e adiciona um ponto
+    local touchPosition = player.Character.HumanoidRootPart.Position
+    addPointToLine(touchPosition)
+end)
+
+-- Função para mover os pontos da linha com o dedo
+UserInputService.TouchStarted:Connect(function(input)
+    if lineEnabled then
+        -- Adiciona um ponto na posição onde o jogador tocou
+        local touchPosition = input.Position
+        addPointToLine(Vector3.new(touchPosition.X, 0, touchPosition.Y))  -- Ajuste a posição conforme necessário
     end
 end)
 
