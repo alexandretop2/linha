@@ -31,6 +31,7 @@ local function drawRaceLine()
     -- Desenha a linha
     for i, point in ipairs(points) do
         local color = Color3.fromRGB(255, 255, 255)  -- Cor padrão para a linha
+        
         if i > 1 then
             -- Detecta a velocidade do carro
             local distance = (car.Position - points[i - 1]).Magnitude
@@ -103,6 +104,58 @@ addPointButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 addPointButton.Font = Enum.Font.GothamBold
 addPointButton.TextSize = 18
 addPointButton.Parent = screenGui
+
+-- Variáveis para o movimento dos botões
+local draggingButton = nil
+local dragInput = nil
+local startPos = nil
+
+-- Função para ativar o movimento dos botões
+local function startDrag(button, input)
+    draggingButton = button
+    startPos = button.Position
+    dragInput = input
+end
+
+local function dragButton(input)
+    if draggingButton then
+        local delta = input.Position - dragInput.Position
+        draggingButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end
+
+local function stopDrag()
+    draggingButton = nil
+    dragInput = nil
+end
+
+-- Inicia o movimento do botão de ativação
+toggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        startDrag(toggleButton, input)
+    end
+end)
+
+-- Inicia o movimento do botão de adicionar ponto
+addPointButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        startDrag(addPointButton, input)
+    end
+end)
+
+-- Movimenta o botão enquanto o dedo/mouse se move
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragButton(input)
+    end
+end)
+
+-- Finaliza o movimento dos botões
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        stopDrag()
+    end
+end)
 
 -- Função de clique do botão para ativar/desativar a linha
 toggleButton.MouseButton1Click:Connect(function()
