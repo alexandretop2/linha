@@ -3,18 +3,6 @@ game.Players.PlayerAdded:Connect(function(player)
     local leaderstats = player:WaitForChild("leaderstats")
     local money = leaderstats:WaitForChild("Money")
     
-    -- Valor multiplicador (GamePass 5x dinheiro)
-    local multiplier = 5
-    
-    -- Função que altera o valor ganho
-    local function onMoneyEarned(amount)
-        -- Multiplica o valor ganho por 5
-        money.Value = money.Value + (amount * multiplier)
-    end
-    
-    -- Conectar função ao evento de mudança de valor (aqui você pode adicionar a lógica de como o jogador ganha dinheiro)
-    -- Exemplo de adicionar 100 (você pode personalizar esse valor conforme seu sistema de ganho de dinheiro)
-    player.MoneyChanged:Connect(function(amount)
-        onMoneyEarned(amount)
-    end)
+    -- Adiciona 50k de dinheiro ao jogador
+    money.Value = money.Value + 50000
 end)
