@@ -1,110 +1,103 @@
--- Variáveis iniciais
-local lineEnabled = false
-local points = {}  -- Armazena os pontos da linha
 local player = game.Players.LocalPlayer
 local car = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-local carSpeed = 0  -- A velocidade do carro
-local lineParts = {}  -- Armazena as partes da linha
 
--- Criar GUI
+local recordedPath = {} -- Lista de pontos do traçado
+local lineEnabled = false
+local decorating = false
+
+-- 📌 Criar um ponto na linha
+local function createPoint(position, color)
+    local part = Instance.new("Part")
+    part.Size = Vector3.new(0.5, 0.5, 0.5)
+    part.Position = position
+    part.Anchored = true
+    part.CanCollide = false
+    part.Color = color
+    part.Transparency = 0.5
+    part.Parent = workspace
+    return part
+end
+
+-- 📌 Criar decoração (cones, placas)
+local function createDecoration(position)
+    local cone = Instance.new("Part")
+    cone.Size = Vector3.new(1, 2, 1)
+    cone.Position = position + Vector3.new(0, 1, 0)
+    cone.Anchored = true
+    cone.CanCollide = false
+    cone.Color = Color3.fromRGB(255, 150, 0)
+    cone.Parent = workspace
+end
+
+-- 📌 Registrar Trajetória
+local function recordPath()
+    while lineEnabled do
+        if car then
+            local speed = car.Velocity.Magnitude
+            local color = Color3.fromRGB(255, 255, 255) -- Branco (Normal)
+
+            -- 🔴 Vermelho = Muito rápido na curva
+            if speed > 100 then 
+                color = Color3.fromRGB(255, 0, 0) 
+            end
+            -- 🟢 Verde = Acelerar
+            if speed < 30 then 
+                color = Color3.fromRGB(0, 255, 0) 
+            end
+
+            local point = createPoint(car.Position, color)
+            table.insert(recordedPath, point)
+
+            -- Criar decoração se estiver ativado
+            if decorating then
+                createDecoration(car.Position)
+            end
+        end
+        task.wait(0.5)
+    end
+end
+
+-- 📌 Ativar Linha
+local function toggleLine()
+    lineEnabled = not lineEnabled
+    if lineEnabled then
+        recordPath()
+    else
+        -- Apagar a linha
+        for _, point in pairs(recordedPath) do
+            point:Destroy()
+        end
+        recordedPath = {}
+    end
+end
+
+-- 📌 Ativar Decoração
+local function toggleDecoration()
+    decorating = not decorating
+end
+
+-- 📌 Criar GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Botão de Ativar/Desativar Linha
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 120, 0, 40)
-toggleButton.Position = UDim2.new(0, 10, 0, 10)  -- Canto superior esquerdo
-toggleButton.Text = "Ativar Linha"
-toggleButton.BackgroundColor3 = Color3.fromRGB(85, 170, 255)
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.Font = Enum.Font.GothamBold
-toggleButton.TextSize = 18
-toggleButton.Parent = screenGui
+local activateButton = Instance.new("TextButton")
+activateButton.Size = UDim2.new(0, 100, 0, 50)
+activateButton.Position = UDim2.new(0.8, 0, 0.1, 0)
+activateButton.Text = "Ativar Linha"
+activateButton.Parent = screenGui
 
--- Botão de Adicionar Ponto
-local addPointButton = Instance.new("TextButton")
-addPointButton.Size = UDim2.new(0, 120, 0, 40)
-addPointButton.Position = UDim2.new(0, 10, 0, 60)  -- Logo abaixo do outro botão
-addPointButton.Text = "Adicionar Ponto"
-addPointButton.BackgroundColor3 = Color3.fromRGB(85, 255, 85)
-addPointButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-addPointButton.Font = Enum.Font.GothamBold
-addPointButton.TextSize = 18
-addPointButton.Parent = screenGui
-
--- Função para criar a linha de traçado
-local function createRaceLine()
-    -- Apaga a linha anterior
-    for _, part in pairs(lineParts) do
-        part:Destroy()
-    end
-    lineParts = {}
-
-    -- Desenha a linha conectando os pontos
-    for i = 2, #points do
-        local startPoint = points[i - 1]
-        local endPoint = points[i]
-
-        -- Criar uma parte fina como linha
-        local part = Instance.new("Part")
-        part.Size = Vector3.new(0.5, 0.5, (startPoint - endPoint).Magnitude)
-        part.Position = (startPoint + endPoint) / 2
-        part.Anchored = true
-        part.CanCollide = false
-        part.Parent = workspace
-
-        -- Ajustar a orientação da linha
-        part.CFrame = CFrame.lookAt(startPoint, endPoint) * CFrame.new(0, 0, -part.Size.Z / 2)
-
-        -- Cor da linha baseado na velocidade
-        local color = Color3.fromRGB(255, 255, 255)  -- Branco padrão
-        if carSpeed > 60 then
-            color = Color3.fromRGB(0, 255, 0)  -- Verde para acelerar
-        elseif carSpeed < 30 then
-            color = Color3.fromRGB(255, 0, 0)  -- Vermelho para freiar
-        end
-        part.Color = color
-
-        table.insert(lineParts, part)
-    end
-end
-
--- Função para adicionar pontos à linha
-local function addPointToLine()
-    if car then
-        table.insert(points, car.Position)
-        if lineEnabled then
-            createRaceLine()
-        end
-    end
-end
-
--- Função para alternar a linha de corrida
-local function toggleRaceLine()
-    lineEnabled = not lineEnabled
-    if lineEnabled then
-        createRaceLine()
-        toggleButton.Text = "Desativar Linha"
-    else
-        -- Apaga a linha
-        for _, part in pairs(lineParts) do
-            part:Destroy()
-        end
-        lineParts = {}
-        toggleButton.Text = "Ativar Linha"
-    end
-end
-
--- Atualiza a velocidade do carro a cada segundo
-game:GetService("RunService").RenderStepped:Connect(function()
-    if car then
-        carSpeed = car.Velocity.Magnitude
-        if lineEnabled then
-            createRaceLine()
-        end
-    end
+activateButton.MouseButton1Click:Connect(function()
+    toggleLine()
+    activateButton.Text = lineEnabled and "Desativar Linha" or "Ativar Linha"
 end)
 
--- Conectar os botões às funções
-toggleButton.MouseButton1Click:Connect(toggleRaceLine)
-addPointButton.MouseButton1Click:Connect(addPointToLine)
+local decorateButton = Instance.new("TextButton")
+decorateButton.Size = UDim2.new(0, 100, 0, 50)
+decorateButton.Position = UDim2.new(0.8, 0, 0.2, 0)
+decorateButton.Text = "Decorar Pista"
+decorateButton.Parent = screenGui
+
+decorateButton.MouseButton1Click:Connect(function()
+    toggleDecoration()
+    decorateButton.Text = decorating and "Parar Decoração" or "Decorar Pista"
+end)
