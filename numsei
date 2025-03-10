@@ -2,6 +2,7 @@ local player = game.Players.LocalPlayer
 local car = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 
 local recordedPath = {} -- Lista de pontos do traçado
+local decorations = {} -- Lista de decorações (cones, placas)
 local lineEnabled = false
 local decorating = false
 
@@ -27,6 +28,7 @@ local function createDecoration(position)
     cone.CanCollide = false
     cone.Color = Color3.fromRGB(255, 150, 0)
     cone.Parent = workspace
+    return cone
 end
 
 -- 📌 Registrar Trajetória
@@ -50,7 +52,8 @@ local function recordPath()
 
             -- Criar decoração se estiver ativado
             if decorating then
-                createDecoration(car.Position)
+                local decor = createDecoration(car.Position)
+                table.insert(decorations, decor)
             end
         end
         task.wait(0.5)
@@ -71,9 +74,14 @@ local function toggleLine()
     end
 end
 
--- 📌 Ativar Decoração
+-- 📌 Ativar/Desativar Decoração
 local function toggleDecoration()
     decorating = not decorating
+
+    -- Esconder ou mostrar os objetos decorativos
+    for _, decor in pairs(decorations) do
+        decor.Transparency = decorating and 0 or 1
+    end
 end
 
 -- 📌 Criar GUI
