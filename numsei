@@ -1,1 +1,10 @@
-game.Workspace.Gravity = 250
+game.Players.PlayerAdded:Connect(function(player)
+    -- Aguarda o leaderstats ser criado
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if leaderstats then
+        local money = leaderstats:FindFirstChild("Money")
+        if money and money:IsA("NumberValue") then
+            money.Value = money.Value * 5
+        end
+    end
+end)
