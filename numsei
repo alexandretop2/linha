@@ -4,47 +4,78 @@ local points = {}  -- Armazena os pontos da linha
 local player = game.Players.LocalPlayer
 local car = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 local carSpeed = 0  -- A velocidade do carro
+local lineParts = {}  -- Armazena as partes da linha
+
+-- Criar GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Botão de Ativar/Desativar Linha
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 40)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)  -- Canto superior esquerdo
+toggleButton.Text = "Ativar Linha"
+toggleButton.BackgroundColor3 = Color3.fromRGB(85, 170, 255)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextSize = 18
+toggleButton.Parent = screenGui
+
+-- Botão de Adicionar Ponto
+local addPointButton = Instance.new("TextButton")
+addPointButton.Size = UDim2.new(0, 120, 0, 40)
+addPointButton.Position = UDim2.new(0, 10, 0, 60)  -- Logo abaixo do outro botão
+addPointButton.Text = "Adicionar Ponto"
+addPointButton.BackgroundColor3 = Color3.fromRGB(85, 255, 85)
+addPointButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+addPointButton.Font = Enum.Font.GothamBold
+addPointButton.TextSize = 18
+addPointButton.Parent = screenGui
 
 -- Função para criar a linha de traçado
 local function createRaceLine()
-    local lineParts = {}
+    -- Apaga a linha anterior
+    for _, part in pairs(lineParts) do
+        part:Destroy()
+    end
+    lineParts = {}
 
     -- Desenha a linha conectando os pontos
     for i = 2, #points do
         local startPoint = points[i - 1]
         local endPoint = points[i]
 
-        -- Cria um Trail entre os pontos
-        local trail = Instance.new("Trail")
-        trail.Parent = workspace
-        trail.Attachment0 = Instance.new("Attachment")
-        trail.Attachment0.Position = startPoint
-        trail.Attachment0.Parent = workspace
+        -- Criar uma parte fina como linha
+        local part = Instance.new("Part")
+        part.Size = Vector3.new(0.5, 0.5, (startPoint - endPoint).Magnitude)
+        part.Position = (startPoint + endPoint) / 2
+        part.Anchored = true
+        part.CanCollide = false
+        part.Parent = workspace
 
-        trail.Attachment1 = Instance.new("Attachment")
-        trail.Attachment1.Position = endPoint
-        trail.Attachment1.Parent = workspace
+        -- Ajustar a orientação da linha
+        part.CFrame = CFrame.lookAt(startPoint, endPoint) * CFrame.new(0, 0, -part.Size.Z / 2)
 
-        -- Define a cor do Trail dependendo da velocidade
-        local color = Color3.fromRGB(255, 255, 255)  -- Cor padrão (branca)
+        -- Cor da linha baseado na velocidade
+        local color = Color3.fromRGB(255, 255, 255)  -- Branco padrão
         if carSpeed > 60 then
             color = Color3.fromRGB(0, 255, 0)  -- Verde para acelerar
         elseif carSpeed < 30 then
             color = Color3.fromRGB(255, 0, 0)  -- Vermelho para freiar
         end
-        trail.Color = ColorSequence.new(color)
+        part.Color = color
 
-        -- Ajusta a espessura da linha
-        trail.WidthScale = 0.5
-        table.insert(lineParts, trail)
+        table.insert(lineParts, part)
     end
 end
 
 -- Função para adicionar pontos à linha
-local function addPointToLine(position)
-    table.insert(points, position)
-    if lineEnabled then
-        createRaceLine()  -- Atualiza a linha quando um novo ponto é adicionado
+local function addPointToLine()
+    if car then
+        table.insert(points, car.Position)
+        if lineEnabled then
+            createRaceLine()
+        end
     end
 end
 
@@ -53,59 +84,27 @@ local function toggleRaceLine()
     lineEnabled = not lineEnabled
     if lineEnabled then
         createRaceLine()
-    else
-        -- Remove a linha quando desativada
-        for _, trail in pairs(workspace:GetChildren()) do
-            if trail:IsA("Trail") then
-                trail:Destroy()
-            end
-        end
-    end
-end
-
--- Função para atualizar a velocidade do carro
-local function updateCarSpeed()
-    if car then
-        -- Calcula a velocidade do carro com base na posição
-        local velocity = car.Velocity
-        carSpeed = velocity.Magnitude
-    end
-end
-
--- Interface gráfica (GUI)
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = player:WaitForChild("PlayerGui")
-
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 100, 0, 50)
-toggleButton.Position = UDim2.new(0.5, -50, 0, 10)
-toggleButton.Text = "Ativar Linha"
-toggleButton.BackgroundColor3 = Color3.fromRGB(85, 170, 255)
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.Font = Enum.Font.GothamBold
-toggleButton.TextSize = 18
-toggleButton.Parent = screenGui
-
--- Função de clique do botão para ativar/desativar a linha
-toggleButton.MouseButton1Click:Connect(function()
-    toggleRaceLine()
-    if lineEnabled then
         toggleButton.Text = "Desativar Linha"
     else
+        -- Apaga a linha
+        for _, part in pairs(lineParts) do
+            part:Destroy()
+        end
+        lineParts = {}
         toggleButton.Text = "Ativar Linha"
+    end
+end
+
+-- Atualiza a velocidade do carro a cada segundo
+game:GetService("RunService").RenderStepped:Connect(function()
+    if car then
+        carSpeed = car.Velocity.Magnitude
+        if lineEnabled then
+            createRaceLine()
+        end
     end
 end)
 
--- Adicionar pontos manualmente (exemplo)
-addPointToLine(Vector3.new(0, 0, 0))  -- Ponto inicial
-addPointToLine(Vector3.new(50, 0, 50))  -- Ponto de curva
-addPointToLine(Vector3.new(100, 0, 0))  -- Outro ponto
-
--- Atualiza a velocidade do carro e a linha a cada segundo
-while true do
-    updateCarSpeed()
-    if lineEnabled then
-        createRaceLine()
-    end
-    wait(1)  -- Espera 1 segundo antes de atualizar novamente
-end
+-- Conectar os botões às funções
+toggleButton.MouseButton1Click:Connect(toggleRaceLine)
+addPointButton.MouseButton1Click:Connect(addPointToLine)
