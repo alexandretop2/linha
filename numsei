@@ -1,111 +1,21 @@
-local player = game.Players.LocalPlayer
-local car = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+local maxSpeed = 200  -- Velocidade máxima do carro (em Studs/s)
+local accelerationMultiplier = 2  -- Multiplicador da aceleração
 
-local recordedPath = {} -- Lista de pontos do traçado
-local decorations = {} -- Lista de decorações (cones, placas)
-local lineEnabled = false
-local decorating = false
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        local vehicleSeat = nil
 
--- 📌 Criar um ponto na linha
-local function createPoint(position, color)
-    local part = Instance.new("Part")
-    part.Size = Vector3.new(0.5, 0.5, 0.5)
-    part.Position = position
-    part.Anchored = true
-    part.CanCollide = false
-    part.Color = color
-    part.Transparency = 0.5
-    part.Parent = workspace
-    return part
-end
-
--- 📌 Criar decoração (cones, placas)
-local function createDecoration(position)
-    local cone = Instance.new("Part")
-    cone.Size = Vector3.new(1, 2, 1)
-    cone.Position = position + Vector3.new(0, 1, 0)
-    cone.Anchored = true
-    cone.CanCollide = false
-    cone.Color = Color3.fromRGB(255, 150, 0)
-    cone.Parent = workspace
-    return cone
-end
-
--- 📌 Registrar Trajetória
-local function recordPath()
-    while lineEnabled do
-        if car then
-            local speed = car.Velocity.Magnitude
-            local color = Color3.fromRGB(255, 255, 255) -- Branco (Normal)
-
-            -- 🔴 Vermelho = Muito rápido na curva
-            if speed > 100 then 
-                color = Color3.fromRGB(255, 0, 0) 
+        -- Monitorar se o jogador entra em um veículo
+        character.ChildAdded:Connect(function(child)
+            if child:IsA("Humanoid") then
+                child.Seated:Connect(function(active, seat)
+                    if active and seat:IsA("VehicleSeat") then
+                        vehicleSeat = seat
+                        vehicleSeat.MaxSpeed = maxSpeed
+                        vehicleSeat.Torque = vehicleSeat.Torque * accelerationMultiplier
+                    end
+                end)
             end
-            -- 🟢 Verde = Acelerar
-            if speed < 30 then 
-                color = Color3.fromRGB(0, 255, 0) 
-            end
-
-            local point = createPoint(car.Position, color)
-            table.insert(recordedPath, point)
-
-            -- Criar decoração se estiver ativado
-            if decorating then
-                local decor = createDecoration(car.Position)
-                table.insert(decorations, decor)
-            end
-        end
-        task.wait(0.5)
-    end
-end
-
--- 📌 Ativar Linha
-local function toggleLine()
-    lineEnabled = not lineEnabled
-    if lineEnabled then
-        recordPath()
-    else
-        -- Apagar a linha
-        for _, point in pairs(recordedPath) do
-            point:Destroy()
-        end
-        recordedPath = {}
-    end
-end
-
--- 📌 Ativar/Desativar Decoração
-local function toggleDecoration()
-    decorating = not decorating
-
-    -- Esconder ou mostrar os objetos decorativos
-    for _, decor in pairs(decorations) do
-        decor.Transparency = decorating and 0 or 1
-    end
-end
-
--- 📌 Criar GUI
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = player:WaitForChild("PlayerGui")
-
-local activateButton = Instance.new("TextButton")
-activateButton.Size = UDim2.new(0, 100, 0, 50)
-activateButton.Position = UDim2.new(0.8, 0, 0.1, 0)
-activateButton.Text = "Ativar Linha"
-activateButton.Parent = screenGui
-
-activateButton.MouseButton1Click:Connect(function()
-    toggleLine()
-    activateButton.Text = lineEnabled and "Desativar Linha" or "Ativar Linha"
-end)
-
-local decorateButton = Instance.new("TextButton")
-decorateButton.Size = UDim2.new(0, 100, 0, 50)
-decorateButton.Position = UDim2.new(0.8, 0, 0.2, 0)
-decorateButton.Text = "Decorar Pista"
-decorateButton.Parent = screenGui
-
-decorateButton.MouseButton1Click:Connect(function()
-    toggleDecoration()
-    decorateButton.Text = decorating and "Parar Decoração" or "Decorar Pista"
+        end)
+    end)
 end)
